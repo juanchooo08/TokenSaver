@@ -5,7 +5,7 @@ en cualquier lenguaje, y funcionan solos: no dependen de que el modelo se acuerd
 
 ```bash
 git clone https://github.com/juanchooo08/TokenSaver.git
-bash TokenSaver/token-saver/install.sh --project /ruta/a/tu/proyecto
+bash TokenSaver/install.sh --project /ruta/a/tu/proyecto
 ```
 
 ---
