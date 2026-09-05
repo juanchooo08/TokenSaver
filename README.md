@@ -147,6 +147,29 @@ Fijate que `.env.local` esté en tu `.gitignore`, así no se te sube por acciden
 > Si preferís poner la key una sola vez para todos tus proyectos, guardala en
 > `~/.claude/cheap-ai.env`. El skill la busca ahí si no la encuentra en el proyecto.
 
+### Poné saldo en OpenRouter (recomendado, ~US$10)
+
+Esto no es para pagar los modelos: es para que **los gratis te rindan mucho más**.
+
+OpenRouter le pone un límite diario de pedidos a los modelos `:free`, y ese límite depende
+de cuánto saldo cargaste alguna vez en tu cuenta:
+
+| Saldo cargado (histórico) | Pedidos por minuto | Pedidos por día |
+|---|---:|---:|
+| Menos de US$10 | 20 | **50** |
+| US$10 o más | 20 | **1.000** |
+
+O sea: con US$10 pasás de 50 tareas gratis por día a 1.000. Es la diferencia entre quedarte
+sin gratis a media mañana y no notarlo nunca. Y el saldo **no se gasta** usando modelos
+`:free`: es una carga que hacés una vez y queda ahí.
+
+> Por ahí escuchaste que con US$5 alcanza. Hoy no: el corte real de OpenRouter está en
+> **US$10**, y con US$5 seguís en el escalón de 50 pedidos por día.
+
+Y ese mismo saldo es el que cubre los cuatro modelos pagos baratos de la escalera de arriba,
+que solo se usan cuando todos los gratis fallan. Con el tope de US$1 por semana que trae el
+paquete, US$10 te duran meses aunque los uses.
+
 **Los dos primeros hooks funcionan sin key.** La key hace falta para los que delegan trabajo.
 
 ---

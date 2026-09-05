@@ -319,6 +319,24 @@ Un `OPENROUTER_API_KEY` generico del proyecto **no** bloquea el fallback global:
 `.env.local` arrastran keys viejas y muertas con ese nombre, y darlas por buenas hacia
 fallar el skill con el error enganoso "todos los modelos fallaron".
 
+### Saldo en OpenRouter (recomendado: US$10)
+
+El limite diario de los modelos `:free` de OpenRouter depende del saldo que el usuario
+haya cargado alguna vez en su cuenta -- no del saldo actual, sino del acumulado historico:
+
+| Saldo cargado (all time) | Pedidos/min | Pedidos/dia |
+|---|---:|---:|
+| Menos de US$10 | 20 | 50 |
+| US$10 o mas | 20 | 1000 |
+
+Con menos de US$10 el skill se queda sin gratis a las 50 tareas del dia y empieza a caer al
+fallback pago (que ademas tiene tope de US$1/semana). Con US$10 cargados, 1000/dia: en la
+practica nunca se toca el techo. El saldo NO se consume usando modelos `:free`.
+
+Si el usuario reporta que "los gratis fallan todo el tiempo" o ve HTTP 429 seguido, esto es
+lo primero a revisar. Fuente: docs de OpenRouter, constante `FREE_MODEL_CREDITS_THRESHOLD`
+(https://openrouter.ai/docs/api-reference/limits).
+
 ### Rotar la key
 
 Cambiar `~/.claude/secrets/openrouter` y correr:

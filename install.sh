@@ -140,6 +140,11 @@ if [ ! -f "$DESTINO/.env.local" ] || ! grep -q "OPENROUTER_CHEAP_API_KEY" "$DEST
   say "(costo US\$0); el fallback pago tiene un tope de US\$1/semana por maquina."
   say "Asegurate de que .env.local este en tu .gitignore."
   say ""
+  say "RECOMENDADO: carga US\$10 de saldo en OpenRouter. No es para pagar los modelos,"
+  say "es para que los gratis rindan: con menos de US\$10 cargados el limite de los ':free'"
+  say "es 50 pedidos por dia; con US\$10 o mas pasa a 1000. Ese mismo saldo cubre el"
+  say "fallback pago, que casi nunca se usa."
+  say ""
 fi
 say "Verificacion rapida (dentro de $DESTINO):"
 say "  npx tsx .claude/skills/cheap-ai/scripts/openrouter-call.ts"
