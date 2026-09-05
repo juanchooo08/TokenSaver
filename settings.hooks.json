@@ -1,0 +1,39 @@
+{
+  "_comment": "Fragmento de hooks que install.sh mergea dentro de .claude/settings.json del proyecto destino. No lo copies entero encima de tu settings.json: perderias permissions, model y todo lo demas.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/compact-reminder.sh" }
+        ]
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/cheap-ai-trigger.sh" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/capturar-salida-larga.sh" }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/cheap-ai-gate.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/cheap-ai-heartbeat.sh" }
+        ]
+      }
+    ]
+  }
+}

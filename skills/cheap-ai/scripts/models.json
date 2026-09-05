@@ -1,0 +1,49 @@
+{
+  "_comment": "Config de ruteo. Los modelos gratis rotan cada pocas semanas en OpenRouter, por eso NO se fijan slugs a mano para las categorias normales -- el script consulta /api/v1/models en vivo (cacheado) y filtra por estos criterios. Excepcion: 'pinnedModels.assist' es una lista en orden de intento, elegida a mano: primero la variante :free (mismos pesos, US$0), y solo si esa falla se paga el fallback barato. maxPaidCompletionPricePerM es un techo DURO en US$ por millon de tokens de salida: se aplica ANTES que el puntaje de calidad, porque con un tope semanal de centavos un modelo 'mejor' a $3/M vacia el presupuesto en tres llamadas.",
+  "paidProviderKeywords": [
+    "deepseek",
+    "qwen",
+    "glm",
+    "z-ai",
+    "moonshot",
+    "minimax",
+    "kimi",
+    "gemini"
+  ],
+  "codeCategoryKeywords": [
+    "code",
+    "coder"
+  ],
+  "codeLikeCategories": [
+    "code",
+    "implement"
+  ],
+  "maxFreeAttempts": 4,
+  "maxPaidFallbackAttempts": 3,
+  "modelsCacheTTLHours": 6,
+  "pinnedModels": {
+    "assist": [
+      "z-ai/glm-5.2:free",
+      "deepseek/deepseek-v4-flash"
+    ]
+  },
+  "forbiddenPathPatterns": [
+    "/auth",
+    "auth/",
+    "(auth)",
+    "/migrations",
+    "migrations/",
+    ".env",
+    "secrets/",
+    "credentials",
+    "/middleware",
+    "/webhook",
+    "webhooks/",
+    "/billing",
+    "/payments",
+    "/checkout"
+  ],
+  "maxPaidCompletionPricePerM": 0.3,
+  "maxConcurrentJobs": 6,
+  "_forbiddenComment": "Deadman switch: si el prompt o el system de una tarea (fuera de la categoria 'assist') contiene alguno de estos strings, la tarea se rechaza y la resuelve el modelo principal. El match es por SUBSTRING sobre el texto en minusculas, asi que conviene que los patrones tengan forma de ruta ('/auth', 'migrations/') y no de palabra suelta ('auth' tambien matchearia 'author'). Adapta esta lista a tu stack: son las areas donde un modelo barato no debe decidir el archivo final."
+}
