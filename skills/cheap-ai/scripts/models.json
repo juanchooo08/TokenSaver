@@ -28,6 +28,8 @@
     ]
   },
   "forbiddenPathPatterns": [
+    "src/app/(auth)",
+    "supabase/migrations",
     "/auth",
     "auth/",
     "(auth)",

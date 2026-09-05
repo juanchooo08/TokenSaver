@@ -34,11 +34,17 @@ case "$cmd" in
   *) echo '{}'; exit 0 ;;
 esac
 
+# Carpeta temporal. En macOS/Linux y en el Git Bash de Windows /tmp existe siempre; el
+# fallback esta por si se corre bajo una shell que no lo mapea (TMPDIR de MSYS, o el
+# propio repo como ultimo recurso).
+tmpdir="/tmp"
+[ -d "$tmpdir" ] || tmpdir="${TMPDIR:-.}"
+
 # Los logs se acumulan durante la sesion. Se borran los de mas de un dia: si el error
 # sigue importando pasado un dia, ya esta arreglado o ya se leyo.
-find /tmp -maxdepth 1 -name 'cc-salida-*.log' -mtime +1 -delete 2>/dev/null
+find "$tmpdir" -maxdepth 1 -name 'cc-salida-*.log' -mtime +1 -delete 2>/dev/null
 
-log="/tmp/cc-salida-$$-$(date +%s).log"
+log="$tmpdir/cc-salida-$$-$(date +%s).log"
 
 # Se preserva el codigo de salida: sin esto el modelo veria "exito" en un build que fallo,
 # que es peor que no tener el hook. `(exit $ec)` fija el codigo sin matar la shell.

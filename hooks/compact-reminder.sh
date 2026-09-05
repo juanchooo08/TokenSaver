@@ -25,13 +25,17 @@ ctx=$(tail -n 400 "$jf" 2>/dev/null | jq -s '
 case "$ctx" in (''|*[!0-9]*) echo '{}'; exit 0 ;; esac
 
 # Para no repetir el mismo aviso en cada turno una vez cruzado el umbral.
-marca=".claude/.ultimo-aviso-compact"
+#
+# El marcador va POR SESION: con un archivo unico por proyecto, dos sesiones abiertas en
+# el mismo repo se pisaban -- una sesion chica de 30k sobreescribia la marca de una de
+# 200k, y la grande volvia a ver `previo < 150000` y repetia el aviso turno tras turno.
+marca=".claude/.ultimo-aviso-compact-${sid}"
 previo=0
 [ -f "$marca" ] && previo=$(cat "$marca" 2>/dev/null)
 case "$previo" in (''|*[!0-9]*) previo=0 ;; esac
 
 k=$((ctx / 1000))
-
+msg=""
 # Umbral configurable. Por defecto avisa a los 150k: sobre 30 dias de uso real, el 57,6%
 # de los turnos pasa ese numero, y es donde cambiar la forma de trabajar todavia sirve.
 # El aviso es TEMPRANO a proposito: no reemplaza al auto-compact (que corta solo, mas
@@ -40,11 +44,11 @@ k=$((ctx / 1000))
 UMBRAL="${TOKEN_SAVER_COMPACT_WARN:-150000}"
 case "$UMBRAL" in (''|*[!0-9]*) UMBRAL=150000 ;; esac
 
-msg=""
 if [ "$ctx" -ge "$UMBRAL" ] && [ "$previo" -lt "$UMBRAL" ]; then
   msg="CONTEXTO EN ${k}k. Queda menos margen del que parece: de aca en adelante evita "
   msg="$msg"'volcados grandes -- grep -n en vez de leer archivos enteros, colas en salidas largas, y considera /compact al cerrar la tarea actual.'
 fi
+
 mkdir -p .claude 2>/dev/null
 echo "$ctx" > "$marca" 2>/dev/null
 

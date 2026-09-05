@@ -15,13 +15,17 @@ prompt=$(printf '%s' "$input" | jq -r '.prompt // empty' 2>/dev/null | tr '[:upp
 
 # Trabajo mecanico: el modelo principal ya entendio que hay que hacer y solo falta
 # producir texto o codigo bien especificado. Es lo que cheap-ai hace igual de bien.
-MECANICO='traduc|traduzc|resum|resúm|boilerplate|scaffold|fixture|seed|mock |datos de prueba'
-MECANICO="$MECANICO"'|changelog|mensaje de commit|commit message|alt-text|alt text|metadata|seo'
+# Los tokens cortos van anclados con \b: sin eso `seo` matcheaba dentro de "deseo" y
+# "paseo", y `resum` dentro de "presumo" -- justo el ruido por turno que este hook vino
+# a eliminar.
+MECANICO='traduc|traduzc|\bresum|\bresúm|boilerplate|scaffold|fixture|\bseed|mock |datos de prueba'
+MECANICO="$MECANICO"'|changelog|mensaje de commit|commit message|alt-text|alt text|metadata|\bseo\b'
 MECANICO="$MECANICO"'|formatear|reformatear|limpiar (los )?datos|convertir (a|el|los)|renombrar'
 MECANICO="$MECANICO"'|placeholder|lorem|copy para|redacta|redactar'
 
 # Sensible: cheap-ai solo puede asistir (categoria assist). Nunca decide ni escribe.
-SENSIBLE='auth|autenticaci|rls|row level|seguridad|security|pago|payment|checkout|webhook'
+# `\brls\b` por lo mismo: sin anclar matcheaba dentro de "urls".
+SENSIBLE='auth|autenticaci|\brls\b|row level|seguridad|security|pago|payment|checkout|webhook'
 SENSIBLE="$SENSIBLE"'|migracion|migración|arquitectura|refactor grande|debug'
 
 msg=""

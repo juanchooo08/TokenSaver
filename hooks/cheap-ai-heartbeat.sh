@@ -5,10 +5,14 @@
 # no solo "una vez cada rato". Un --batch de N tareas otorga N creditos de una sola llamada.
 # Opt-out: si ya corres Claude Code contra un modelo gratis o baratisimo (un proxy propio,
 # un gateway local, un modelo local), la capa 2 no aporta nada y el sistema de creditos
-# solo estorba. TOKEN_SAVER_NO_CREDITS=1 lo desactiva sin desinstalar nada. El gate lee la
-# misma variable, asi que los dos hooks quedan consistentes.
-[ "$TOKEN_SAVER_NO_CREDITS" = "1" ] && { echo '{}'; exit 0; }
-
+# solo estorba. Se desactiva sin desinstalar nada con cualquiera de las dos vias:
+#   export TOKEN_SAVER_NO_CREDITS=1
+#   ANTHROPIC_AUTH_TOKEN=omniroute   (el proxy propio del autor, se deja por compatibilidad)
+# El gate lee lo mismo, asi que los dos hooks quedan consistentes.
+if [ "$TOKEN_SAVER_NO_CREDITS" = "1" ] || [ "$ANTHROPIC_AUTH_TOKEN" = "omniroute" ]; then
+  echo '{}'
+  exit 0
+fi
 input=$(cat)
 cmd=$(echo "$input" | jq -r '.tool_input.command // empty')
 
