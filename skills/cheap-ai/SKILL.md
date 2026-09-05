@@ -151,15 +151,21 @@ Sigue respetando el tope de presupuesto semanal igual que el resto.
 Cada llamada elige una **categoria** de tarea. Para las categorias normales, el script prueba
 varios modelos gratis (`":free"`) en orden de calidad real; si TODOS fallan (rate limit,
 caido, etc.) y todavia queda presupuesto semanal, cae a la **escalera de fallback pago** de
-`pinnedModels.paidFallback`, en orden de menos a mas caro (precios por millon de tokens de
-salida, verificados el 2026-09-04):
+`pinnedModels.paidFallback`, en orden de MEJOR a peor benchmark (precios por millon de
+tokens de salida, verificados el 2026-09-04):
 
 | # | Modelo | Salida | Entrada | Coding | Intelligence |
 |---|--------|--------|---------|--------|--------------|
-| 1 | `inclusionai/ling-3.0-flash` | US$0.063 | US$0.021 | 50.6 | 27.4 |
-| 2 | `upstage/solar-pro4` | US$0.12 | US$0.03 | 52.7 | s/d |
-| 3 | `deepseek/deepseek-v4-flash-0731` | US$0.18 | US$0.065 | 69.1 | 40.8 |
-| 4 | `z-ai/glm-5.3-flash` | US$0.25 | US$0.075 | 71.5 | 46.2 |
+| 1 | `z-ai/glm-5.3-flash` | US$0.25 | US$0.075 | 71.5 | 46.2 |
+| 2 | `deepseek/deepseek-v4-flash-0731` | US$0.18 | US$0.065 | 69.1 | 40.8 |
+| 3 | `upstage/solar-pro4` | US$0.12 | US$0.03 | 52.7 | s/d |
+| 4 | `inclusionai/ling-3.0-flash` | US$0.063 | US$0.021 | 50.6 | 27.4 |
+
+**Por que del mejor al mas barato y no al reves:** a esta escala el precio es irrelevante.
+Una tarea tipica (~2k tokens de salida) cuesta US$0.0005 en el primero y US$0.00013 en el
+ultimo: una diferencia de US$0.0004. Arrancar por el mas barato significaba usar el peor
+modelo (coding 50.6 vs 71.5) casi siempre, para ahorrar centesimos de centavo. El techo
+duro de `maxPaidCompletionPricePerM` es lo que evita el gasto de verdad, no el orden.
 
 La escalera es una preferencia, no una atadura: si un modelo desaparece del catalogo o sube
 por encima de `maxPaidCompletionPricePerM`, se saltea solo y el hueco lo llena la seleccion

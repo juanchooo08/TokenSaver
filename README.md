@@ -97,18 +97,22 @@ cambian cada pocas semanas. El skill mira el catálogo en vivo y elige los mejor
 benchmark real, no por precio. Prueba 4 antes de rendirse.
 
 **Si todos los gratis fallan** (caídos o con el límite de uso agotado) y todavía te queda
-presupuesto, baja a esta escalera de pagos, de más barato a más caro. Precios en dólares por
-millón de tokens, verificados el 2026-09-04:
+presupuesto, baja a esta escalera de pagos, **del mejor al más barato**. Precios en dólares
+por millón de tokens, verificados el 2026-09-04:
 
 | Orden | Modelo | Salida | Entrada | Coding | Inteligencia |
 |:---:|---|---:|---:|---:|---:|
-| 1 | `inclusionai/ling-3.0-flash` | $0.063 | $0.021 | 50.6 | 27.4 |
-| 2 | `upstage/solar-pro4` | $0.12 | $0.03 | 52.7 | s/d |
-| 3 | `deepseek/deepseek-v4-flash-0731` | $0.18 | $0.065 | 69.1 | 40.8 |
-| 4 | `z-ai/glm-5.3-flash` | $0.25 | $0.075 | **71.5** | **46.2** |
+| 1 | `z-ai/glm-5.3-flash` | $0.25 | $0.075 | **71.5** | **46.2** |
+| 2 | `deepseek/deepseek-v4-flash-0731` | $0.18 | $0.065 | 69.1 | 40.8 |
+| 3 | `upstage/solar-pro4` | $0.12 | $0.03 | 52.7 | s/d |
+| 4 | `inclusionai/ling-3.0-flash` | $0.063 | $0.021 | 50.6 | 27.4 |
 
 *Coding e inteligencia son los índices públicos de Artificial Analysis, los mismos que usa
 el skill para ordenar los modelos.*
+
+Empieza por el mejor y no por el más barato porque a esta escala el precio no cambia nada:
+entre el primero y el último de la tabla hay US$0.0004 de diferencia por tarea. Lo que
+protege tu bolsillo es el techo de precio, no el orden.
 
 Para que tengas una idea de la escala: una tarea típica delegada gasta como US$0.0005 en el
 modelo más caro de esa tabla. Con el tope de **US$1 por semana** que trae por defecto,
