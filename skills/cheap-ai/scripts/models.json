@@ -8,7 +8,8 @@
     "moonshot",
     "minimax",
     "kimi",
-    "gemini"
+    "inclusionai",
+    "upstage"
   ],
   "codeCategoryKeywords": [
     "code",
@@ -19,12 +20,18 @@
     "implement"
   ],
   "maxFreeAttempts": 4,
-  "maxPaidFallbackAttempts": 3,
+  "maxPaidFallbackAttempts": 4,
   "modelsCacheTTLHours": 6,
   "pinnedModels": {
     "assist": [
       "z-ai/glm-5.2:free",
-      "deepseek/deepseek-v4-flash"
+      "z-ai/glm-5.3-flash"
+    ],
+    "paidFallback": [
+      "inclusionai/ling-3.0-flash",
+      "upstage/solar-pro4",
+      "deepseek/deepseek-v4-flash-0731",
+      "z-ai/glm-5.3-flash"
     ]
   },
   "forbiddenPathPatterns": [
@@ -47,5 +54,6 @@
   ],
   "maxPaidCompletionPricePerM": 0.3,
   "maxConcurrentJobs": 6,
-  "_forbiddenComment": "Deadman switch: si el prompt o el system de una tarea (fuera de la categoria 'assist') contiene alguno de estos strings, la tarea se rechaza y la resuelve el modelo principal. El match es por SUBSTRING sobre el texto en minusculas, asi que conviene que los patrones tengan forma de ruta ('/auth', 'migrations/') y no de palabra suelta ('auth' tambien matchearia 'author'). Adapta esta lista a tu stack: son las areas donde un modelo barato no debe decidir el archivo final."
+  "_forbiddenComment": "Deadman switch: si el prompt o el system de una tarea (fuera de la categoria 'assist') contiene alguno de estos strings, la tarea se rechaza y la resuelve el modelo principal. El match es por SUBSTRING sobre el texto en minusculas, asi que conviene que los patrones tengan forma de ruta ('/auth', 'migrations/') y no de palabra suelta ('auth' tambien matchearia 'author'). Adapta esta lista a tu stack: son las areas donde un modelo barato no debe decidir el archivo final.",
+  "_paidFallbackComment": "Escalera de fallback pago, en orden de intento de MENOS a MAS caro (precios por millon de tokens de salida, verificados el 2026-09-04): ling-3.0-flash US$0.063 (coding 50.6), solar-pro4 US$0.12 (52.7), deepseek-v4-flash-0731 US$0.18 (69.1), glm-5.3-flash US$0.25 (71.5, intelligence 46.2). Si un modelo de la lista ya no existe en el catalogo o pasa el techo de maxPaidCompletionPricePerM, se saltea sin romper nada y el hueco lo llena la seleccion automatica por benchmark. 'gemini' salio de paidProviderKeywords: Gemini Flash hoy cuesta US$3.75/M, 12 veces el techo, asi que el filtro lo descartaba siempre."
 }

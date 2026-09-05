@@ -303,14 +303,26 @@ function pickPaidFallback(catalog: OpenRouterModel[], category: string, config: 
       parseFloat(m.pricing?.completion || "0") <= maxOut &&
       config.paidProviderKeywords.some((k) => m.id.toLowerCase().includes(k))
   );
-  // Prioriza calidad; el precio (siempre bajo entre estos proveedores) solo desempata.
-  return candidates
+  // Primero la escalera fijada a mano en models.json (pinnedModels.paidFallback), en su
+  // orden: de menos a mas caro. Es una preferencia, no una atadura -- un modelo que ya no
+  // existe en el catalogo, o que subio de precio por encima del techo, simplemente no esta
+  // entre los candidatos y se saltea solo.
+  const fijados = ([] as string[])
+    .concat(config.pinnedModels?.paidFallback || [])
+    .map((id) => candidates.find((m) => m.id === id))
+    .filter((m): m is OpenRouterModel => Boolean(m));
+
+  // El resto se completa con la seleccion automatica por benchmark, que es lo que cubre el
+  // hueco cuando la escalera queda corta (los modelos baratos rotan seguido).
+  const resto = candidates
+    .filter((m) => !fijados.some((f) => f.id === m.id))
     .sort((a, b) => {
       const scoreDiff = modelQualityScore(b, category, config) - modelQualityScore(a, category, config);
       if (scoreDiff !== 0) return scoreDiff;
       return parseFloat(a.pricing?.prompt || "0") - parseFloat(b.pricing?.prompt || "0");
-    })
-    .slice(0, config.maxPaidFallbackAttempts);
+    });
+
+  return [...fijados, ...resto].slice(0, config.maxPaidFallbackAttempts);
 }
 
 function mondayOf(date: Date): string {

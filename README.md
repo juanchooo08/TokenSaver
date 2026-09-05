@@ -1,7 +1,7 @@
 # token-saver
 
-Hooks y skills para gastar menos tokens en Claude Code. Se instalan en cualquier proyecto,
-en cualquier lenguaje, y funcionan solos: no dependen de que el modelo se acuerde de nada.
+Un paquete que hace que Claude Code gaste menos tokens. Se instala con un comando en
+cualquier proyecto, de cualquier lenguaje, y después trabaja solo en segundo plano.
 
 ```bash
 git clone https://github.com/juanchooo08/TokenSaver.git
@@ -10,180 +10,243 @@ bash TokenSaver/install.sh --project /ruta/a/tu/proyecto
 
 ---
 
-## El problema
+## Por qué tu sesión gasta tanto
 
-Lo caro no es lo que el modelo escribe. Es el tamaño del contexto que se relee en **cada
-turno**.
+Lo caro no es lo que Claude escribe. Es lo que Claude **lee**, una y otra vez.
 
-Medido sobre 30 días de uso real de Claude Code (los números salen de los `.jsonl` de
-sesión, campo `message.usage`):
+Claude Code no tiene memoria entre mensajes: en cada turno vuelve a mandar toda la
+conversación. Si en el turno 3 corriste un `npm run build` que falló y escupió 400 líneas de
+errores, esas 400 líneas se vuelven a mandar en el turno 4, en el 5, en el 20. Las pagás
+cada vez.
 
-| Métrica | Valor |
+Midiendo 30 días de uso real:
+
+| | |
 |---|---|
-| Contexto promedio por turno | ~214.000 tokens |
-| Turnos que pasan de 150k | 57,6% |
-| Relación cache-read / output | **~225 a 1** |
+| Lo que se relee por turno, en promedio | **214.000 tokens** |
+| Turnos que pasan de 150.000 tokens | **57,6%** |
+| Cuánto más grande es lo que se relee vs. lo que se escribe | **225 veces** |
 
-Un `npm run build` que falla vuelca 400 líneas de stack trace. Esas 400 líneas no se pagan
-una vez: se releen en cada turno posterior de la sesión. Ese es el gasto real, y ninguna
-instrucción del tipo "sé conciso" lo toca.
-
-Este paquete ataca eso en tres frentes: **recortar lo que entra** al contexto, **avisar
-antes** de que el contexto se vuelva caro, y **bajar el trabajo mecánico** a modelos
-gratis.
+Decirle "sé breve" a Claude no arregla nada, porque el problema no está en lo que escribe.
+Este paquete ataca lo otro: **qué entra a la conversación, y qué se puede hacer sin Claude.**
 
 ---
 
-## Qué instala
+## Qué hace, en simple
 
-### Hooks (automáticos, no dependen del criterio del modelo)
+### 1. Corta las salidas largas antes de que entren
 
-| Hook | Evento | Qué hace |
-|---|---|---|
-| `capturar-salida-larga.sh` | `PreToolUse` / Bash | Intercepta builds, tests y linters: vuelca la salida completa a `/tmp` y deja entrar al contexto solo las últimas 60 líneas. **Es el único que elimina tokens en vez de sugerir que los elimines.** |
-| `compact-reminder.sh` | `UserPromptSubmit` | Lee el tamaño real del contexto del turno anterior y avisa **una sola vez** al cruzar 150k. Sin contar turnos a ciegas. |
-| `cheap-ai-trigger.sh` | `UserPromptSubmit` | Detecta por regex si tu pedido tiene trabajo mecánico delegable y solo entonces recuerda delegarlo. |
-| `cheap-ai-heartbeat.sh` | `PostToolUse` / Bash | Otorga 1 crédito por cada tarea que delegaste con éxito. |
-| `cheap-ai-gate.sh` | `PreToolUse` / Write\|Edit | Cobra 1 crédito por cada escritura. Sin créditos, bloquea. |
-| `permitir-bash.sh` | `PreToolUse` / Bash (global, opcional) | Auto-aprueba comandos que no nombran `.env` ni `secrets/`, para que las reglas `deny` no disparen un prompt de permiso en cada comando. |
+Cuando Claude corre un build, un test o un linter, este paquete guarda la salida completa en
+un archivo aparte y solo deja pasar **las últimas 60 líneas**. Si necesita ver el resto, el
+archivo está ahí y lo puede abrir.
 
-### Skills
+Es lo único del paquete que borra tokens de verdad, en vez de sugerir que los borres.
 
-| Skill | Qué hace |
-|---|---|
-| `cheap-ai` | Delega trabajo mecánico a modelos `:free` de OpenRouter (traducciones, fixtures, boilerplate, changelogs, resúmenes de logs). Elige el modelo en vivo por benchmark, valida el código que devuelve con tu `tsc`, y tiene tope de gasto semanal. |
-| `destilar-docs` | Convierte los `.md` largos del repo en notas cortas en `docs/notas/`. Después el agente lee 40 líneas en vez de 500. Idempotente por hash. |
-| `prompt-compressor` | Comprime un borrador de prompt largo antes de que lo mandes. Manual, a propósito. |
+> Archivo: `hooks/capturar-salida-larga.sh`
+
+### 2. Te avisa cuando la conversación se puso cara
+
+Lee cuánto pesa la conversación de verdad y avisa **una sola vez** cuando pasa los 150.000
+tokens, para que sepas que es buen momento de hacer `/compact` o de arrancar un chat nuevo.
+No cuenta mensajes a ciegas: mira el peso real.
+
+> Archivo: `hooks/compact-reminder.sh`
+
+### 3. Manda el trabajo aburrido a modelos gratis
+
+Traducir un texto, generar datos de prueba, escribir un mensaje de commit, resumir un log de
+errores: nada de eso necesita el modelo caro. El skill `cheap-ai` le pasa esas tareas a
+modelos **gratuitos** de OpenRouter y te devuelve el resultado para que Claude lo revise.
+
+La regla de oro: **el modelo barato nunca guarda archivos.** Solo propone; el modelo
+principal revisa y decide.
+
+> Skill: `skills/cheap-ai/`
+
+### 4. Convierte los documentos largos en notas cortas
+
+Si tu repo tiene documentación de 500 líneas, `destilar-docs` la resume una vez (con los
+modelos gratis) y deja una nota de 40 líneas en `docs/notas/`. A partir de ahí Claude lee la
+nota y no el documento. Solo vuelve a resumir lo que cambió.
+
+> Skill: `skills/destilar-docs/`
+
+### 5. Te ayuda a escribir prompts más cortos
+
+`/prompt-compressor "tu texto largo"` te devuelve la versión corta para que la copies y la
+mandes vos. Es manual a propósito: nadie reescribe tu mensaje sin que lo veas.
+
+> Skill: `skills/prompt-compressor/`
+
+### 6. Deja de preguntarte permiso por cada comando
+
+Opcional (`--global`). Si tenés reglas que bloquean leer tu `.env`, Claude Code pregunta
+permiso en casi cada comando por las dudas. Este hook responde por vos: si el comando no
+menciona `.env` ni `secrets/`, pasa; si los menciona, decide el sistema normal como siempre.
+
+> Archivo: `hooks/permitir-bash.sh`
 
 ---
 
-## El sistema de créditos (leelo antes de instalar)
+## Los modelos gratis y baratos que usa
 
-`cheap-ai-heartbeat.sh` + `cheap-ai-gate.sh` forman un ciclo cerrado:
+Cuando Claude delega una tarea, el skill busca un modelo en este orden:
 
-```
-delegás una tarea a un modelo gratis  ->  ganás 1 crédito
-Claude quiere escribir un archivo     ->  gasta 1 crédito
-sin créditos                          ->  Write/Edit bloqueado
-```
+**Primero, gratis.** No hay una lista fija porque los modelos gratuitos de OpenRouter
+cambian cada pocas semanas. El skill mira el catálogo en vivo y elige los mejores por
+benchmark real, no por precio. Prueba 4 antes de rendirse.
 
-La idea: sin el gate, "delegá lo mecánico" es una sugerencia que el modelo olvida en el
-turno 3. Con el gate, la escalera de tokens deja de depender de su memoria.
+**Si todos los gratis fallan** (caídos o con el límite de uso agotado) y todavía te queda
+presupuesto, baja a esta escalera de pagos, de más barato a más caro. Precios en dólares por
+millón de tokens, verificados el 2026-09-04:
 
-**Es el mecanismo más agresivo del paquete.** Si no lo querés, instalá con `--no-gate` y
-te quedás con todo lo demás.
+| Orden | Modelo | Salida | Entrada | Coding | Inteligencia |
+|:---:|---|---:|---:|---:|---:|
+| 1 | `inclusionai/ling-3.0-flash` | $0.063 | $0.021 | 50.6 | 27.4 |
+| 2 | `upstage/solar-pro4` | $0.12 | $0.03 | 52.7 | s/d |
+| 3 | `deepseek/deepseek-v4-flash-0731` | $0.18 | $0.065 | 69.1 | 40.8 |
+| 4 | `z-ai/glm-5.3-flash` | $0.25 | $0.075 | **71.5** | **46.2** |
 
-Dos salidas de emergencia, ya incluidas:
+*Coding e inteligencia son los índices públicos de Artificial Analysis, los mismos que usa
+el skill para ordenar los modelos.*
 
-- **Rutas sensibles pasan siempre, gratis.** Cualquier archivo cuyo path matchee
-  `auth|rls|polic|payment|checkout|billing|stripe|polar|security|middleware|webhook|.env`
-  se escribe sin consumir crédito. Ahí un modelo barato nunca decide el archivo final.
-- **Sin `cheap-ai` instalado, el gate se abstiene.** No hay forma de ganar créditos, así
-  que bloquear sería dejar al agente sin salida.
+Para que tengas una idea de la escala: una tarea típica delegada gasta como US$0.0005 en el
+modelo más caro de esa tabla. Con el tope de **US$1 por semana** que trae por defecto,
+entran unas 2.000 tareas. En la práctica el gasto real es casi siempre **cero**, porque los
+gratis funcionan.
 
-Y un opt-out global: `export TOKEN_SAVER_NO_CREDITS=1` desactiva el ciclo entero sin
-desinstalar nada. Útil si ya corrés Claude Code contra un modelo gratis o un gateway local
-— ahí la capa 2 no aporta nada.
+Hay un techo duro de $0.30 por millón: cualquier modelo más caro queda descartado
+automáticamente, aunque sea mejor. Es lo que evita que una tarea se coma el presupuesto de
+la semana.
+
+La escalera es una preferencia, no una obligación. Si mañana uno de esos modelos desaparece
+o sube de precio, el skill lo saltea solo y elige el mejor que quede.
 
 ---
 
-## Requisitos
+## Qué necesitás antes de instalar
 
-- **`jq`** — los hooks lo usan para leer el JSON que les pasa Claude Code. Sin esto no
-  funciona ninguno.
-- **Node ≥ 18** — para los skills (`npx tsx`).
-- **Una API key de OpenRouter** — gratis en <https://openrouter.ai/keys>.
+- **`jq`** — un programita para leer JSON. Los hooks lo usan.
+  `brew install jq` en Mac, `sudo apt install jq` en Linux.
+- **Node 18 o más nuevo** — para los skills.
+- **Una cuenta de OpenRouter** — la API key es gratis, se saca en
+  <https://openrouter.ai/keys>.
+
+Después de instalar, pegá la key en tu proyecto:
 
 ```bash
-echo 'OPENROUTER_CHEAP_API_KEY=sk-or-v1-...' >> .env.local
+echo 'OPENROUTER_CHEAP_API_KEY=sk-or-v1-tu-key-aca' >> .env.local
 ```
 
-O una vez para toda la máquina, en `~/.claude/cheap-ai.env` (el skill la busca ahí si no
-la encuentra en el proyecto).
+Fijate que `.env.local` esté en tu `.gitignore`, así no se te sube por accidente.
 
-Sobre el costo: `cheap-ai` usa modelos `:free`, que cuestan US$0. Solo cae a un modelo pago
-cuando los gratis fallan, con un techo duro de US$0,30 por millón de tokens de salida y un
-tope de **US$1 por semana** compartido entre todos tus proyectos
-(`OPENROUTER_CHEAP_WEEKLY_CAP_USD`). El acumulado vive en `~/.claude/openrouter-budget.json`
-y se reinicia los lunes.
+> Si preferís poner la key una sola vez para todos tus proyectos, guardala en
+> `~/.claude/cheap-ai.env`. El skill la busca ahí si no la encuentra en el proyecto.
 
-**Los hooks funcionan sin key.** Los que dependen de OpenRouter son los skills y el ciclo
-de créditos.
+**Los dos primeros hooks funcionan sin key.** La key hace falta para los que delegan trabajo.
 
 ---
 
 ## Instalación
 
 ```bash
-bash install.sh                      # en el directorio actual
+bash install.sh                      # en la carpeta donde estás parado
 bash install.sh --project ~/mi-app   # en otro proyecto
-bash install.sh --global             # + permitir-bash.sh en ~/.claude
-bash install.sh --no-gate            # sin el gate de créditos
-bash install.sh --dry-run            # mostrame qué harías
+bash install.sh --global             # además, el hook de permisos para todos tus proyectos
+bash install.sh --no-gate            # sin el sistema de créditos (ver abajo)
+bash install.sh --dry-run            # mostrame qué harías, sin tocar nada
 ```
 
-El instalador **mergea** los hooks dentro de tu `.claude/settings.json` con `jq`: no pisa
-tus `permissions`, tu `model` ni tus hooks propios, y correrlo dos veces no duplica nada.
-Igual deja un backup con timestamp al lado.
+El instalador **no pisa tu configuración**: agrega los hooks a tu `.claude/settings.json`
+respetando lo que ya tengas, y si lo corrés dos veces no duplica nada. Igual te deja una
+copia de seguridad al lado.
 
-Después, copiá las reglas de [`docs/CLAUDE.md-snippet.md`](docs/CLAUDE.md-snippet.md) a tu
-`CLAUDE.md`. Los hooks automatizan una parte; la otra mitad del ahorro está en cómo el
-agente decide leer y buscar, y eso son reglas.
+Para terminar, copiá las reglas de [`docs/CLAUDE.md-snippet.md`](docs/CLAUDE.md-snippet.md)
+a tu archivo `CLAUDE.md`. Los hooks hacen una parte del trabajo; la otra mitad del ahorro
+está en cómo Claude decide leer y buscar, y eso son instrucciones.
 
-### Verificar
+### Comprobar que quedó bien
 
 ```bash
-npx tsx .claude/skills/cheap-ai/scripts/openrouter-call.ts     # estado y presupuesto
+npx tsx .claude/skills/cheap-ai/scripts/openrouter-call.ts
 ```
 
-### Desinstalar
+Te muestra cuánto llevás gastado esta semana y cuántos créditos tenés.
+
+### Sacarlo
 
 ```bash
 rm -rf .claude/hooks/{capturar-salida-larga,compact-reminder,cheap-ai-trigger,cheap-ai-heartbeat,cheap-ai-gate}.sh
 rm -rf .claude/skills/{cheap-ai,destilar-docs,prompt-compressor}
 ```
 
-y sacá los bloques correspondientes de `.claude/settings.json` (o restaurá el `.bak-*` que
-dejó el instalador).
+Y borrá los bloques correspondientes de `.claude/settings.json`, o restaurá la copia
+`.bak-...` que dejó el instalador.
 
 ---
 
-## Cómo adaptarlo a tu stack
+## El sistema de créditos (leelo antes, es el más estricto)
 
-Este paquete es agnóstico del lenguaje, pero dos cosas conviene ajustar:
+Hay dos hooks que trabajan juntos:
 
-1. **`skills/cheap-ai/scripts/models.json` → `forbiddenPathPatterns`.** Es un deadman
-   switch: si el prompt de una tarea menciona una de esas rutas, el skill se niega a
-   ejecutarla y te la devuelve. Los valores por defecto (`/auth`, `migrations/`, `.env`,
-   `/webhook`…) cubren un stack web típico. Poné las tuyas.
-2. **La lista de comandos de `capturar-salida-larga.sh`.** Trae `npm/pnpm/yarn/bun` +
-   `tsc/next/playwright`. Si usás `cargo`, `pytest`, `go test` o `mvn`, agregalos al `case`.
+```
+delegás una tarea a un modelo gratis   ->  ganás 1 crédito
+Claude quiere guardar un archivo       ->  gasta 1 crédito
+no te quedan créditos                  ->  no puede guardar hasta que delegues algo
+```
 
-El hook es conservador a propósito: se abstiene si el comando ya tiene pipes,
-redirecciones o encadenamientos, porque ahí vos o el modelo ya decidieron qué querían ver.
+¿Por qué tan drástico? Porque "acordate de delegar lo aburrido" es una sugerencia que el
+modelo olvida a los tres mensajes. Así deja de depender de su memoria.
+
+**Si te parece demasiado, instalá con `--no-gate`** y te quedás con todo lo demás.
+
+Trae tres salidas de emergencia:
+
+- **Los archivos delicados nunca se bloquean.** Todo lo que tenga que ver con login,
+  permisos, pagos, webhooks o `.env` se guarda sin gastar crédito. Ahí un modelo barato no
+  debería opinar.
+- **Si no tenés `cheap-ai` instalado, el hook no hace nada.** Sin forma de ganar créditos,
+  bloquear sería dejarte encerrado.
+- **`export TOKEN_SAVER_NO_CREDITS=1`** lo apaga entero, sin desinstalar nada.
 
 ---
 
-## Variables de entorno
+## Ajustes que quizás quieras tocar
 
-| Variable | Default | Qué hace |
+**Si no usás JavaScript.** Abrí `hooks/capturar-salida-larga.sh` y agregá tus comandos a la
+lista (`cargo test`, `pytest`, `go test`, `mvn`, lo que uses). Por defecto trae los de
+`npm`, `pnpm`, `yarn` y `bun`.
+
+**Qué cosas nunca se delegan.** En `skills/cheap-ai/scripts/models.json`, la lista
+`forbiddenPathPatterns` marca los temas donde el skill se niega a trabajar y te devuelve la
+tarea. Vienen puestos login, migraciones de base de datos, `.env`, webhooks y pagos. Poné
+los tuyos.
+
+**Todas las variables de entorno:**
+
+| Variable | Por defecto | Para qué |
 |---|---|---|
-| `OPENROUTER_CHEAP_API_KEY` | — | Key de OpenRouter para los skills. Separada de la key que use tu app en producción. |
-| `OPENROUTER_CHEAP_WEEKLY_CAP_USD` | `1` | Tope de gasto semanal, por máquina. |
-| `TOKEN_SAVER_NO_CREDITS` | — | `1` desactiva el ciclo de créditos (heartbeat + gate). |
-| `TOKEN_SAVER_COMPACT_WARN` | `150000` | Umbral de contexto para el aviso temprano. |
-| `CHEAP_AI_SYNC_EXCLUDE` | — | Proyectos a excluir de `sync-key.ts`, separados por coma. |
+| `OPENROUTER_CHEAP_API_KEY` | — | Tu key de OpenRouter. |
+| `OPENROUTER_CHEAP_WEEKLY_CAP_USD` | `1` | Cuánto podés gastar por semana, en dólares. |
+| `TOKEN_SAVER_NO_CREDITS` | — | `1` apaga el sistema de créditos. |
+| `TOKEN_SAVER_COMPACT_WARN` | `150000` | A partir de qué tamaño te avisa. |
 
 ---
 
-## Advertencias
+## Dos cosas importantes
 
-- **`cheap-ai` manda tu prompt a OpenRouter, que es un servicio externo.** Nunca le pases
-  datos reales de usuarios, credenciales ni contenido de `.env`. Si una tarea mecánica
-  necesita datos de ejemplo, inventá fixtures sintéticos primero. Si trabajás con datos
-  sensibles (salud, pagos, legal), copiá la cláusula de corte duro del snippet de
-  `CLAUDE.md`.
-- **Nada de lo que devuelve un modelo barato se guarda sin revisión.** El skill nunca
-  escribe archivos: imprime, y el modelo principal decide.
-- El presupuesto en modo `--batch` puede pasarse por centavos: los jobs corren en paralelo
-  contra un contador compartido en memoria. Es una limitación conocida y aceptada.
+**Tus prompts salen de tu computadora.** `cheap-ai` se los manda a OpenRouter, que es un
+servicio de afuera. No le pases datos reales de clientes, contraseñas ni contenido de tu
+`.env`. Si necesitás datos de ejemplo, inventá unos falsos primero. Si trabajás con
+información sensible (salud, pagos, temas legales), en
+[`docs/CLAUDE.md-snippet.md`](docs/CLAUDE.md-snippet.md) hay un bloque listo para prohibirlo
+explícitamente.
+
+**Nada de lo que escribe un modelo barato se guarda sin que Claude lo revise.** El skill
+imprime el resultado en pantalla; guardarlo o no es decisión del modelo principal.
+
+---
+
+## Licencia
+
+MIT. Usalo, cambialo, compartilo.

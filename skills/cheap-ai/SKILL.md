@@ -130,9 +130,12 @@ ayudarte como asistente, nunca como reemplazo:
 `scripts/models.json`), no el auto-ruteo que usan las demas categorias, porque en este rol
 importa la consistencia del modelo:
 
-1. `z-ai/glm-5.2:free` -- mismos pesos que el pago, US$0.
-2. `deepseek/deepseek-v4-flash` -- fallback pago (US$0.056/US$0.112 por millon), solo si
-   el gratis esta caido o rate-limited. Una consulta tipica cuesta ~US$0.00002.
+1. `z-ai/glm-5.2:free` -- coding 68.8, el mejor gratis del catalogo por bastante (el
+   segundo, `minimax-m3:free`, marca 58.6). US$0.
+2. `z-ai/glm-5.3-flash` -- fallback pago (US$0.075/US$0.25 por millon), solo si el gratis
+   esta caido o rate-limited. Misma familia que el gratis, asi el asistente no cambia de
+   caracter entre uno y otro, y es el mejor benchmark bajo el techo de precio:
+   coding 71.5, intelligence 46.2.
 
 **Por que NO se fija el `z-ai/glm-5.2` pago:** cuesta US$3.04 por millon de tokens de
 salida. Con un tope semanal de centavos, tres o cuatro consultas agotan el presupuesto de
@@ -147,9 +150,23 @@ Sigue respetando el tope de presupuesto semanal igual que el resto.
 
 Cada llamada elige una **categoria** de tarea. Para las categorias normales, el script prueba
 varios modelos gratis (`":free"`) en orden de calidad real; si TODOS fallan (rate limit,
-caido, etc.) y todavia queda presupuesto semanal, cae a un modelo pago barato (DeepSeek,
-Qwen, GLM, Kimi, o Gemini Flash -- este ultimo agregado porque hoy es mas barato Y mejor
-benchmark que varias de las alternativas "chinas"). La categoria `assist` es la unica excepcion: usa siempre el
+caido, etc.) y todavia queda presupuesto semanal, cae a la **escalera de fallback pago** de
+`pinnedModels.paidFallback`, en orden de menos a mas caro (precios por millon de tokens de
+salida, verificados el 2026-09-04):
+
+| # | Modelo | Salida | Entrada | Coding | Intelligence |
+|---|--------|--------|---------|--------|--------------|
+| 1 | `inclusionai/ling-3.0-flash` | US$0.063 | US$0.021 | 50.6 | 27.4 |
+| 2 | `upstage/solar-pro4` | US$0.12 | US$0.03 | 52.7 | s/d |
+| 3 | `deepseek/deepseek-v4-flash-0731` | US$0.18 | US$0.065 | 69.1 | 40.8 |
+| 4 | `z-ai/glm-5.3-flash` | US$0.25 | US$0.075 | 71.5 | 46.2 |
+
+La escalera es una preferencia, no una atadura: si un modelo desaparece del catalogo o sube
+por encima de `maxPaidCompletionPricePerM`, se saltea solo y el hueco lo llena la seleccion
+automatica por benchmark.
+
+**Gemini salio de `paidProviderKeywords`:** Gemini Flash hoy cuesta US$3.75 por millon de
+salida, 12 veces el techo, asi que el filtro lo descartaba siempre. Era peso muerto. La categoria `assist` es la unica excepcion: usa siempre el
 modelo fijo, nunca prueba gratis primero (ver seccion de arriba).
 
 | Categoria | Tipo de tarea |
